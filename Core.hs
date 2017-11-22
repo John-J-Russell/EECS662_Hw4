@@ -163,6 +163,10 @@ unify :: CType -> CType -> TcM ()
 --One case for catch-all if == true succeed else fail
 
 --Useful function: applyM. Updates/applies stored unification variables.
+--Provided sample case:
+unify (TFun t1 t2) (TFun u1 u2) =
+    do unify t1 u1
+       expect t2 u2     -- Make sure we take account of having unified t1 and u1
 unify t u = typeError ("Expected " ++ show t ++ " but got " ++ show u ++
                        "\n(Some cases of unification may not be implemented)")
 --Need to match matching types. If they don't match, type error.
