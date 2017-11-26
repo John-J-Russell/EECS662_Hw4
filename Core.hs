@@ -164,9 +164,22 @@ unify :: CType -> CType -> TcM ()
 
 --Useful function: applyM. Updates/applies stored unification variables.
 --Provided sample case:
-unify (TFun t1 t2) (TFun u1 u2) =
+unify (CTFun t1 t2) (CTFun u1 u2) = --Changed into CTFun 
     do unify t1 u1
        expect t2 u2     -- Make sure we take account of having unified t1 and u1
+unify (CTSum t1 t2) (CTSum u1 u2) = --Sums
+    do unify t1 u1
+       unify t2 u2 
+--I have no idea if this is right, but I think this is how it works. Expect is for a return thing
+--Maaay want to do a "applyM" before the second unify.
+--Have two for sums, one for left and one for right?
+unify (CTPair t1 t2) (CTPair u1 u2) =
+    do unify t1 u1
+       unify t2 u2
+--ApplyM? Need for changes done to t1 to apply to t2 if necessary.
+--Perhaps ApplyM is called in the lowest correct case?
+--    typeError("Pair unification error")
+--unify 
 unify t u = typeError ("Expected " ++ show t ++ " but got " ++ show u ++
                        "\n(Some cases of unification may not be implemented)")
 --Need to match matching types. If they don't match, type error.
@@ -189,7 +202,9 @@ check g (CAdd e1 e2) t =
        check g e1 CTInt
        check g e2 CTInt
 check g (CMult e1 e2) t =
-    typeError "Type checking not implemented for multiplication"
+    do expect CTInt t
+       check g e1 CTInt
+       check g e2 CTInt
 check _ (CBool _) t =
     typeError "Type checking not implemented for Boolean constants"
 check g (CIs0 e) t =
