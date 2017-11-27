@@ -167,20 +167,24 @@ unify :: CType -> CType -> TcM ()
 unify (CTFun t1 t2) (CTFun u1 u2) = --Changed into CTFun 
     do unify t1 u1
        expect t2 u2     -- Make sure we take account of having unified t1 and u1
+--Expect is for the cases where you are matching a->a and int->bool,
+--matching the same holder to disparate types
 unify (CTSum t1 t2) (CTSum u1 u2) = --Sums
     do unify t1 u1
-       unify t2 u2 
+       expect t2 u2 
 --I have no idea if this is right, but I think this is how it works. Expect is for a return thing
---Maaay want to do a "applyM" before the second unify.
+--Could use apply?
 --Have two for sums, one for left and one for right?
 unify (CTPair t1 t2) (CTPair u1 u2) =
     do unify t1 u1
-       unify t2 u2
+       expect t2 u2
 --ApplyM? Need for changes done to t1 to apply to t2 if necessary.
 --Perhaps ApplyM is called in the lowest correct case?
 --    typeError("Pair unification error")
---unify 
-unify t u = typeError ("Expected " ++ show t ++ " but got " ++ show u ++
+unify (CTVar t1) u1 = bind t1 u1 
+unify t1 (CTVar u1) = bind u1 t1 --Unification variable is first arg of bind
+unify t u =
+    if t == u then return CTOne else typeError ("Expected " ++ show t ++ " but got " ++ show u ++
                        "\n(Some cases of unification may not be implemented)")
 --Need to match matching types. If they don't match, type error.
 --Question: how do you actually "fill in" the box like the directions say?
