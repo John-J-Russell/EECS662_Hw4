@@ -80,9 +80,11 @@ data TcM a = TcM { runTcM :: TcState -> Either String (a, TcState) }
 instance Functor TcM where
     fmap f = (>>= return . f)
 
+{-
 instance Applicative TcM where
     pure = return
     (<*>) = liftM2 ($)
+-}
 
 instance Monad TcM where
     return x = TcM (\s -> Right (x, s))
@@ -153,13 +155,13 @@ unify (CTFun t1 t2) (CTFun u1 u2) = --Changed into CTFun
 unify (CTSum t1 t2) (CTSum u1 u2) = --Sums
     do unify t1 u1
        expect t2 u2 
-unify (CTPair t1 t2) (CTPair u1 u2) =
+unify (CTProd t1 t2) (CTProd u1 u2) =
     do unify t1 u1
        expect t2 u2
 unify (CTVar t1) u1 = bind t1 u1 
 unify t1 (CTVar u1) = bind u1 t1 --Unification variable is first arg of bind
 unify t u =
-    if t == u then return CTOne else typeError ("Expected " ++ show t ++ " but got " ++ show u)
+    if t == u then return () else typeError ("Expected " ++ show t ++ " but got " ++ show u)
 --------------------------------------------------------------------------------
 -- Type checking: inference
 --------------------------------------------------------------------------------
@@ -172,7 +174,7 @@ checkTop g e =
 
 check :: TyEnv -> Core -> CType -> TcM ()
 check _ (CInt _) t =
-    do unify t CTInt
+    do expect t CTInt
 check g (CAdd e1 e2) t =
     do expect CTInt t
        check g e1 CTInt
@@ -182,10 +184,10 @@ check g (CMult e1 e2) t =
        check g e1 CTInt
        check g e2 CTInt
 check _ (CBool _) t =
-    do unify CTBool t
+    do expect CTBool t
 check g (CIs0 e) t =
     do check g e CTInt
-       unify CTBool t
+       expect CTBool t
 check g (CIf e e1 e2) t =
     do check g e CTBool
        check g e1 t
@@ -193,24 +195,24 @@ check g (CIf e e1 e2) t =
 --t should be the same for both.
 check g (CVar x) t =
     do case lookup x g of
-       Just s -> temp <- instantiate s 
-                 unify temp t
-       _      -> typeError "Couldn't process a variable."
+            Just s -> do temp <- instantiate s 
+                         expect temp t
+            _      -> typeError "Couldn't process a variable."
 
     --I don't remember, something about generalize. Or maybe instantiate.
 check g (CLam x e) t = --This one needs to add something to gamma? t is t->u 
-    do fresh u1
-       fresh u2
-       unify (CTFun u1 u2) t
+    do u1 <- fresh 
+       u2 <- fresh 
+       expect (CTFun u1 u2) t
        check (assumeType x u1 g) e u2
 --Maybe something else too.
 --With gamma and x:t, show/check that e:u, thus x->e : t->u
 check g (CApp e1 e2) u = 
-    do fresh t
+    do t <- fresh 
        check g e1 (CTFun u t)
        check g e2 t
 check g (CLet x e1 e2) t = --check e1 is a function from u to t, and e2 is t. This one uses generalize.
-    do fresh u
+    do u <- fresh 
        check g e1 u
        s <- generalize g u
        check (assumeScheme x s g) e2 t 
@@ -227,23 +229,23 @@ check g (CLetPair x1 x2 e1 e2) t =
        check g e1 (CTProd u1 u2)
        check (assumeType x1 u1 (assumeType x2 u2 g)) e2 t
 check _ CUnit t =
-    do unify CTOne t
+    do expect CTOne t
 check g (CLetUnit e1 e2) t = --e1 is unit, e2 is t
     do check g e1 CTOne 
        check g e2 t
 check g (CInl e) t = 
-    do fresh l
-       fresh r
-       unify (CTSum l r) t
+    do l <- fresh 
+       r <- fresh 
+       expect (CTSum l r) t
        check g e l
 check g (CInr e) t =
-    do fresh l
-       fresh r
-       unify (CTSum l r) t
+    do l <- fresh 
+       r <- fresh 
+       expect (CTSum l r) t
        check g e r
 check g (CCase e (x1, e1) (x2, e2)) t = --t is u in the notes.
-    do fresh t1 
-       fresh t2
+    do t1 <- fresh  
+       t2 <- fresh 
        check g e (CTSum t1 t2)
        check (assumeType x1 t1 g) e1 t
        check (assumeType x2 t2 g) e2 t
