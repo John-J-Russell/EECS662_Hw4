@@ -200,7 +200,7 @@ checkTop g e =
 
 check :: TyEnv -> Core -> CType -> TcM ()
 check _ (CInt _) t =
-    typeError "Type checking not implemented for integer constants"
+    do unify t CTInt
 check g (CAdd e1 e2) t =
     do expect CTInt t
        check g e1 CTInt
@@ -210,13 +210,17 @@ check g (CMult e1 e2) t =
        check g e1 CTInt
        check g e2 CTInt
 check _ (CBool _) t =
-    typeError "Type checking not implemented for Boolean constants"
+    do unify CTBool t
 check g (CIs0 e) t =
-    typeError "Type checking not implemented for zero tests"
+    do check g e CTInt
+       unify CTBool t
 check g (CIf e e1 e2) t =
-    typeError "Type checking not implemented for conditionals"
+    do check g e CTBool
+       check g e1 t
+       check g e2 t
+--t should be the same for both.
 check g (CVar x) t =
-    typeError "Type checking not implemented for variables"
+    --I don't remember, something about generalize. Or maybe instantiate.
 check g (CLam x e) t =
     typeError "Type checking not implemented for lambdas"
 check g (CApp e1 e2) u =
@@ -235,7 +239,7 @@ check g (CLetPair x1 x2 e1 e2) t =
        check g e1 (CTProd u1 u2)
        check (assumeType x1 u1 (assumeType x2 u2 g)) e2 t
 check _ CUnit t =
-    typeError "Type checking not implemented for unit introduction"
+    do unify CTOne t
 check g (CLetUnit e1 e2) t =
     typeError "Type checking not implemented for unit elimination"
 check g (CInl e) t =
