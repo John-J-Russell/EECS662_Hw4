@@ -145,25 +145,6 @@ expect t u =
        unify t' u'
 
 unify :: CType -> CType -> TcM ()
---Modify this right here
---Something like 6 cases?
---Functions (likely recursive unify calls?)
---Products (same)
---Sums (same)
---Ints, bools, units, and variables.
---Wants to return a TcM unit value
-
---From the notes:
---If t == u, succeed.
---If either are unification variables, use "bind"
---If types don't match (e.g. int and bool), type error as shown
---Else, they must be compound types (sums, pairs, functions) so unify their components.
---So 3 cases for sums pairs and functions using pattern matching
---Two cases for unification variables
---One case for catch-all if == true succeed else fail
-
---Useful function: applyM. Updates/applies stored unification variables.
---Provided sample case:
 unify (CTFun t1 t2) (CTFun u1 u2) = --Changed into CTFun 
     do unify t1 u1
        expect t2 u2     -- Make sure we take account of having unified t1 and u1
@@ -172,22 +153,13 @@ unify (CTFun t1 t2) (CTFun u1 u2) = --Changed into CTFun
 unify (CTSum t1 t2) (CTSum u1 u2) = --Sums
     do unify t1 u1
        expect t2 u2 
---I have no idea if this is right, but I think this is how it works. Expect is for a return thing
---Could use apply?
---Have two for sums, one for left and one for right?
 unify (CTPair t1 t2) (CTPair u1 u2) =
     do unify t1 u1
        expect t2 u2
---ApplyM? Need for changes done to t1 to apply to t2 if necessary.
---Perhaps ApplyM is called in the lowest correct case?
---    typeError("Pair unification error")
 unify (CTVar t1) u1 = bind t1 u1 
 unify t1 (CTVar u1) = bind u1 t1 --Unification variable is first arg of bind
 unify t u =
-    if t == u then return CTOne else typeError ("Expected " ++ show t ++ " but got " ++ show u ++
-                       "\n(Some cases of unification may not be implemented)")
---Need to match matching types. If they don't match, type error.
---Question: how do you actually "fill in" the box like the directions say?
+    if t == u then return CTOne else typeError ("Expected " ++ show t ++ " but got " ++ show u)
 --------------------------------------------------------------------------------
 -- Type checking: inference
 --------------------------------------------------------------------------------
@@ -220,12 +192,17 @@ check g (CIf e e1 e2) t =
        check g e2 t
 --t should be the same for both.
 check g (CVar x) t =
+    do case lookup x g of
+       Just s -> temp <- generalize g s
+                 unify temp t --I don't know
+       _      -> typeError "AAAAAAAAAAAAAAAAAAAAAAA"
+
     --I don't remember, something about generalize. Or maybe instantiate.
-check g (CLam x e) t =
+check g (CLam x e) t = --This one needs to add something to gamma
     typeError "Type checking not implemented for lambdas"
-check g (CApp e1 e2) u =
+check g (CApp e1 e2) u = 
     typeError "Type checking not implemented for application"
-check g (CLet x e1 e2) t =
+check g (CLet x e1 e2) t = --check e1 is a function from u to t, and e2 is t.
     typeError "Type checking not implemented for let"
 check g (CPair e1 e2) t =
     do u1 <- fresh
