@@ -193,14 +193,16 @@ check g (CIf e e1 e2) t =
 --t should be the same for both.
 check g (CVar x) t =
     do case lookup x g of
-       Just s -> temp <- generalize g s --This might be instantiate s instead
-                 unify temp t --I don't know
-       _      -> typeError "AAAAAAAAAAAAAAAAAAAAAAA"
+       Just s -> temp <- instantiate s 
+                 unify temp t
+       _      -> typeError "Couldn't process a variable."
 
     --I don't remember, something about generalize. Or maybe instantiate.
-check g (CLam x e) t = --This one needs to add something to gamma?
-    do fresh u
-       check (assumeType x t g) e u
+check g (CLam x e) t = --This one needs to add something to gamma? t is t->u 
+    do fresh u1
+       fresh u2
+       unify (CTFun u1 u2) t
+       check (assumeType x u1 g) e u2
 --Maybe something else too.
 --With gamma and x:t, show/check that e:u, thus x->e : t->u
 check g (CApp e1 e2) u = 
@@ -208,7 +210,10 @@ check g (CApp e1 e2) u =
        check g e1 (CTFun u t)
        check g e2 t
 check g (CLet x e1 e2) t = --check e1 is a function from u to t, and e2 is t. This one uses generalize.
-    typeError "Type checking not implemented for let"
+    do fresh u
+       check g e1 u
+       s <- generalize g u
+       check (assumeScheme x s g) e2 t 
 --check e1 is u, s is generalized from gamma and u, then with gamma and x:s check e2:t 
 check g (CPair e1 e2) t =
     do u1 <- fresh
@@ -224,20 +229,25 @@ check g (CLetPair x1 x2 e1 e2) t =
 check _ CUnit t =
     do unify CTOne t
 check g (CLetUnit e1 e2) t = --e1 is unit, e2 is t
-    do unify e1 CTOne 
+    do check g e1 CTOne 
        check g e2 t
-check g (CInl e) t = --Actually wait, t might be t + u.
+check g (CInl e) t = 
     do fresh l
        fresh r
        unify (CTSum l r) t
        check g e l
-check g (CInr e) t = --NOTE: Both of these cases are missing something, but I don't remember what.
+check g (CInr e) t =
     do fresh l
        fresh r
        unify (CTSum l r) t
        check g e r
-check g (CCase e (x1, e1) (x2, e2)) t = --Not a snowball's chance in hell I can do this one from memory.
-    typeError "Type checking not implemented for case"
+check g (CCase e (x1, e1) (x2, e2)) t = --t is u in the notes.
+    do fresh t1 
+       fresh t2
+       check g e (CTSum t1 t2)
+       check (assumeType x1 t1 g) e1 t
+       check (assumeType x2 t2 g) e2 t
+
 check g (CFix e) t =
     do u1 <- fresh
        u2 <- fresh
