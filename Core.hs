@@ -193,17 +193,23 @@ check g (CIf e e1 e2) t =
 --t should be the same for both.
 check g (CVar x) t =
     do case lookup x g of
-       Just s -> temp <- generalize g s
+       Just s -> temp <- generalize g s --This might be instantiate s instead
                  unify temp t --I don't know
        _      -> typeError "AAAAAAAAAAAAAAAAAAAAAAA"
 
     --I don't remember, something about generalize. Or maybe instantiate.
-check g (CLam x e) t = --This one needs to add something to gamma
-    typeError "Type checking not implemented for lambdas"
+check g (CLam x e) t = --This one needs to add something to gamma?
+    do fresh u
+       check (assumeType x t g) e u
+--Maybe something else too.
+--With gamma and x:t, show/check that e:u, thus x->e : t->u
 check g (CApp e1 e2) u = 
-    typeError "Type checking not implemented for application"
-check g (CLet x e1 e2) t = --check e1 is a function from u to t, and e2 is t.
+    do fresh t
+       check g e1 (CTFun u t)
+       check g e2 t
+check g (CLet x e1 e2) t = --check e1 is a function from u to t, and e2 is t. This one uses generalize.
     typeError "Type checking not implemented for let"
+--check e1 is u, s is generalized from gamma and u, then with gamma and x:s check e2:t 
 check g (CPair e1 e2) t =
     do u1 <- fresh
        u2 <- fresh
@@ -217,13 +223,20 @@ check g (CLetPair x1 x2 e1 e2) t =
        check (assumeType x1 u1 (assumeType x2 u2 g)) e2 t
 check _ CUnit t =
     do unify CTOne t
-check g (CLetUnit e1 e2) t =
-    typeError "Type checking not implemented for unit elimination"
-check g (CInl e) t =
-    typeError "Type checking not implemented for Inl"
-check g (CInr e) t =
-    typeError "Type checking not implemented for Inr"
-check g (CCase e (x1, e1) (x2, e2)) t =
+check g (CLetUnit e1 e2) t = --e1 is unit, e2 is t
+    do unify e1 CTOne 
+       check g e2 t
+check g (CInl e) t = --Actually wait, t might be t + u.
+    do fresh l
+       fresh r
+       unify (CTSum l r) t
+       check g e l
+check g (CInr e) t = --NOTE: Both of these cases are missing something, but I don't remember what.
+    do fresh l
+       fresh r
+       unify (CTSum l r) t
+       check g e r
+check g (CCase e (x1, e1) (x2, e2)) t = --Not a snowball's chance in hell I can do this one from memory.
     typeError "Type checking not implemented for case"
 check g (CFix e) t =
     do u1 <- fresh
