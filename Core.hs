@@ -80,6 +80,8 @@ data TcM a = TcM { runTcM :: TcState -> Either String (a, TcState) }
 instance Functor TcM where
     fmap f = (>>= return . f)
 
+
+--Comment out this bit when running on cycle1
 {-
 instance Applicative TcM where
     pure = return

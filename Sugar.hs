@@ -30,6 +30,7 @@ parens = T.parens l
 brackets = T.brackets l
 lexeme = T.lexeme l
 comma = T.comma l
+commaSep = T.commaSep l
 
 variable = try (do v <- identifier
                    guard (isLower (head v))
@@ -99,10 +100,11 @@ atomp = choice [ CInt `fmap` lexeme intConst
                , CVar `fmap` identifier
                , reserved "Inl" >> (CInl `fmap` exprp)
                , reserved "Inr" >> (CInr `fmap` exprp)
-               , do me <- parens (optionMaybe exprp)
-                    case me of
-                      Nothing -> return CUnit
-                      Just e  -> return e ]
+               , do es <- parens (commaSep exprp)
+                    case es of
+                      []  -> return CUnit
+                      [e] -> return e
+                      _   -> return (foldr1 CPair es)]
 
 intConst = do ds <- many1 digit
               return (read ds)

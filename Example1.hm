@@ -1,0 +1,4 @@
+-- how to write test cases, note it really dislikes pairs.
+let x = 6 in
+    let y = 4 in
+        x * y
