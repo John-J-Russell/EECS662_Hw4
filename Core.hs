@@ -82,11 +82,11 @@ instance Functor TcM where
 
 
 --Comment out this bit when running on cycle1
-{-
+
 instance Applicative TcM where
     pure = return
     (<*>) = liftM2 ($)
--}
+
 
 instance Monad TcM where
     return x = TcM (\s -> Right (x, s))
@@ -200,9 +200,8 @@ check g (CVar x) t =
             Just s -> do temp <- instantiate s 
                          expect temp t
             _      -> typeError "Couldn't process a variable."
-
-    --I don't remember, something about generalize. Or maybe instantiate.
-check g (CLam x e) t = --This one needs to add something to gamma? t is t->u 
+--instantiate.
+check g (CLam x e) t = --This one needs to add something to gamma t is t->u 
     do u1 <- fresh 
        u2 <- fresh 
        expect (CTFun u1 u2) t
